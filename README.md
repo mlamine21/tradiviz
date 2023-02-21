@@ -12,7 +12,7 @@ conda create -n travidiz python=3.9.13
 
 conda activate travidiz
 
-conda install numpy pandas mongodb matplotlib networkx
+conda install numpy pandas mongodb matplotlib==3.7.0 networkx pillow==9.0.0
 
 cd path/to/TRAVIDIZ_folder/
 

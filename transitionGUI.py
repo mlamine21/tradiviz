@@ -11,6 +11,7 @@ from  matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationTool
 import matplotlib.patches as mpatches
 from matplotlib.widgets import RangeSlider
 import networkx as nx
+import csv
 ##NEEDS pillow==9.0.0 and matplotlib 3.7.0
 client = None
 db = None
@@ -92,12 +93,12 @@ def generateMatrix():
     annotations = db["Annotations"]
     annotations_data = db["AnnotationData"]
     all_sessions_matrix = np.zeros((len(labels.get_children()),len(labels.get_children())))
-    for session in sessions_ids:
+    for session in getListBoxSelection(sessions):
         all_roles = []
         for scheme in getListBoxSelection(schemes):
             #Get the annotation files
             annotation = annotations.find({
-            "session_id":session,
+            "session_id":sessions_ids[sessions_names.index(sessions.get(session))],
             "annotator_id":annotator_id, 
             "scheme_id":schemes_ids[schemes_names.index(schemes.get(scheme))]})
             annotation_data_id = (annotation[0])["data_id"]
@@ -140,6 +141,12 @@ def generateMatrix():
             else:
                 e.insert(END, filtered_matrix.iloc[i-1,j-1])
             e.config(state=DISABLED)
+    with open("matrix.csv", "w", newline='') as f:
+        writer = csv.writer(f, delimiter=',')
+        for i in range(len(filtered_matrix)):
+            writer.writerow(filtered_matrix.iloc[i])
+
+
     drawTransitionDiagram(filtered_matrix, threshold_min=0.8, threshold_max=1)
     return
 
@@ -275,8 +282,8 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
         mapping[i] = labels.get_children()[i]
     G = nx.relabel_nodes(G, mapping)
 
-    nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.5, font_size=12, alpha=1, ax=ax)
-    nx.draw_circular(G, with_labels= True, font_size=8, arrowsize=10, node_size=2500,node_color=color_map, ax=ax)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.5, font_size=15, alpha=1, ax=ax)
+    nx.draw_circular(G, with_labels= True, font_size=13, arrowsize=10, node_size=2500,node_color=color_map, ax=ax)
     # plt.show()
     # ax.update()
     canvas.draw()

@@ -7,14 +7,20 @@ It must connecct to a server running a mongoDB database that follows the structu
 
 ## Installation
 
+### Windows 
+
+Download repo in zip, then extract
+
+Run anaconda prompt
+
 ```
 conda create -n travidiz python=3.9.13 
 
 conda activate travidiz
 
-conda install numpy pandas mongodb matplotlib==3.7.0 networkx pillow==9.0.0
+conda install numpy pandas pymongo matplotlib==3.7.0 networkx pillow==9.0.0
 
-cd path/to/TRAVIDIZ_folder/
+cd path/to/TRADIVIZ_folder/
 
 python transitionGUI.py
 

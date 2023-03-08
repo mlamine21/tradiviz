@@ -286,7 +286,7 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
         mapping[i] = labels.get_children()[i]
     G = nx.relabel_nodes(G, mapping)
 
-    nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.5, font_size=15, alpha=1, ax=ax)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.2, font_size=15, alpha=1, ax=ax)
     nx.draw_circular(G, with_labels= True, font_size=13, arrowsize=10, node_size=2500,node_color=color_map, ax=ax, alpha=0.9)
     # plt.show()
     # ax.update()

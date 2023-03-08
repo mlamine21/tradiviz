@@ -50,6 +50,11 @@ def chooseDB(event):
     schemes_names,schemes_ids = getCollectionNamesIds(schemes_temp)
     for s in schemes_names:
         schemes.insert(schemes.size(),s)
+    
+    annotators_temp = db["Annotators"]
+    annotators_names,annotators_ids = getCollectionNamesIds(annotators_temp)
+    for a in annotators_names:
+        annotators.insert(annotators.size(),a)
 
 def updateLabels(event):
     global db
@@ -77,10 +82,10 @@ def generateMatrix():
     global ax
     chosen_db = db_changed.get()
     db = client[chosen_db]
-    annotators = db["Annotators"]
-    annotators_names,annotators_ids = getCollectionNamesIds(annotators)
+    annotators_collection = db["Annotators"]
+    annotators_names,annotators_ids = getCollectionNamesIds(annotators_collection)
     #Get ObjectID of selected annotator for the annotation to add
-    annotator_id = annotators_ids[annotators_names.index("emilie")]
+    annotator_id = annotators_ids[(getListBoxSelection(annotators))[0]]
 
     sessions_temp = db["Sessions"]
     sessions_names,sessions_ids = getCollectionNamesIds(sessions_temp)
@@ -120,7 +125,7 @@ def generateMatrix():
         all_sessions_matrix+=transition.values
     
     all_sessions_normalized = normalizeTransitions(all_sessions_matrix)
-    
+    # all_sessions_normalized = all_sessions_matrix
     normalized_transitions_df = pd.DataFrame(data = all_sessions_normalized)
     label_vals = labels.get_children()
     selection = labels.selection()
@@ -141,24 +146,23 @@ def generateMatrix():
             else:
                 e.insert(END, filtered_matrix.iloc[i-1,j-1])
             e.config(state=DISABLED)
-    with open("matrix.csv", "w", newline='') as f:
-        writer = csv.writer(f, delimiter=',')
-        for i in range(len(filtered_matrix)):
-            writer.writerow(filtered_matrix.iloc[i])
+    # with open("matrix.csv", "w", newline='') as f:
+    #     writer = csv.writer(f, delimiter=',')
+    #     for i in range(len(filtered_matrix)):
+    #         writer.writerow(filtered_matrix.iloc[i])
 
 
     drawTransitionDiagram(filtered_matrix, threshold_min=0.8, threshold_max=1)
     return
 
-def combineRolesMatrices(data_role1, data_role2, labels_role1,filtered=False):
+def combineRolesMatrices(data_role1, data_role2, labels_role1):
     #Change counselor labels {0:18} -> {14: 32} 
     data_role2[2] = data_role2[2].apply(lambda x:x+len(labels_role1))
-
 
     # combine client and counselor data 
     merged = [data_role1, data_role2]
     result = pd.concat(merged)
-    #sort client and cousnelor data based on timing (start time)
+    #sort client and cousnelor data based on timing (start time is first column)
     result = result.sort_values(0)
     
     return result
@@ -274,16 +278,16 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
     nb_labels_role1 = len(((schemes_temp.find())[0])["labels"])
     for node in G:
         if node < nb_labels_role1:
-            color_map.append('#D89187')
+            color_map.append('#f2bdb6')
         else: 
-            color_map.append('#A9D8DA')    
+            color_map.append('#bee9eb')    
 
     for i in range(len(labels.get_children())):
         mapping[i] = labels.get_children()[i]
     G = nx.relabel_nodes(G, mapping)
 
     nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.5, font_size=15, alpha=1, ax=ax)
-    nx.draw_circular(G, with_labels= True, font_size=13, arrowsize=10, node_size=2500,node_color=color_map, ax=ax)
+    nx.draw_circular(G, with_labels= True, font_size=13, arrowsize=10, node_size=2500,node_color=color_map, ax=ax, alpha=0.9)
     # plt.show()
     # ax.update()
     canvas.draw()
@@ -303,11 +307,15 @@ root.title("TraDiViz")
 # #setting tkinter window size
 # root.geometry("%dx%d" % (width, height))
 root.geometry('1200x800')
-left_frame = Frame(root)
 
-right_frame = Frame(root)
+m = PanedWindow(orient=HORIZONTAL)
+m.pack(fill=BOTH, expand=1)
 
+left_frame = Frame(m)
 
+right_frame = Frame(m)
+m.add(left_frame)
+m.add(right_frame)
 ########################################
 #SERVER MENU
 ######################################
@@ -371,13 +379,18 @@ database_choice.bind("<<ComboboxSelected>>", chooseDB)
 
 
 Label(database_frame,text ="Sessions").grid(column = 0, row = 1, padx=10, pady=5)
-sessions = Listbox(database_frame, selectmode = "multiple", exportselection=False)  
-sessions.grid(column = 0, row = 2, padx=10, pady=5, sticky='nswe')
+sessions = Listbox(database_frame, selectmode = "extended", exportselection=False)  
+sessions.grid(column = 0, row = 2, padx=10, pady=5, sticky='nswe', rowspan=3)
 
 Label(database_frame,text ="Schemes").grid(column = 1, row = 1, padx=10, pady=5)
-schemes = Listbox(database_frame, selectmode = "multiple")  
+schemes = Listbox(database_frame, selectmode = "extended", height=5, exportselection=False)  
 schemes.grid(column = 1, row = 2, padx=10, pady=5, sticky='nswe')
 schemes.bind("<<ListboxSelect>>", updateLabels)
+
+Label(database_frame,text ="Annotators").grid(column = 1, row = 3, padx=10, pady=5)
+annotators = Listbox(database_frame, height=5, exportselection=False)  
+annotators.grid(column = 1, row = 4, padx=10, pady=5, sticky='nswe')
+# schemes.bind("<<ListboxSelect>>", updateLabels)
 
 # Label(database_frame,text ="Labels").grid(column = 2, row = 1, padx=10, pady=5)
 
@@ -388,13 +401,14 @@ labels.column('id', width="10")
 labels.heading('label', text='label')
 labels.heading('shortname', text='shortname')
 # labels = Listbox(database_frame, selectmode = "multiple", exportselection=False)  
-labels.grid(column = 0, row =3, padx=10, pady=5, sticky='nswe', columnspan=2)
+labels.grid(column = 0, row =5, padx=10, pady=5, sticky='nswe', columnspan=2)
 labels.bind('<1>', editTreeCell)
 database_frame.pack(fill="both")
 #####################################
 #Transition matrix
 #####################################
 transition_frame =  Frame(left_frame, highlightbackground="grey", highlightthickness=2)
+
 connect_button = Button(transition_frame, text = "Generate transition matrix", command= generateMatrix)
 connect_button.grid(column = 0, row = 0, columnspan=3, pady=10)
 
@@ -404,13 +418,14 @@ matrix_frame.grid(row=1,column=1, padx=10)
 
 transition_frame.pack()
 
-left_frame.pack(side="left", fill="both")
+# left_frame.pack(side="left", fill="both")
 
 
 ################################################
 # Plot frame
 ################################################
 fig, ax= plt.subplots()
+ax.axis(False)
 axthres = fig.add_axes([0.25, 0, 0.6, 0.05])
 # fig.set_size_inches(fig.get_size_inches()[0]*1.2, fig.get_size_inches()[1]*1.2)
 thres_slider = RangeSlider(
@@ -428,7 +443,7 @@ canvas = FigureCanvasTkAgg(fig, right_frame)
 # toolbar = NavigationToolbar2Tk(canvas, right_frame)
 # toolbar.update()
 canvas._tkcanvas.pack(fill=BOTH, expand=True)
-right_frame.pack(side="right", fill="both", expand=True)
+# right_frame.pack(side="right", fill="both", expand=True)
 
 
 

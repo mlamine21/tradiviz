@@ -410,15 +410,15 @@ database_frame.pack(fill="both")
 transition_frame =  Frame(left_frame, highlightbackground="grey", highlightthickness=2)
 
 connect_button = Button(transition_frame, text = "Generate transition matrix", command= generateMatrix)
-connect_button.grid(column = 0, row = 0, columnspan=3, pady=10)
+connect_button.grid(column = 0, row = 0, pady=10, sticky='w')
 
 matrix_frame = Frame(transition_frame, highlightbackground="grey", highlightthickness=2)
-matrix_frame.grid(row=1,column=1, padx=10)
+matrix_frame.grid(row=1,column=0,padx=10)
 
 
-transition_frame.pack()
+transition_frame.pack(side='left')
 
-# left_frame.pack(side="left", fill="both")
+# left_frame.pack(side="left")
 
 
 ################################################

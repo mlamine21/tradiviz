@@ -37,6 +37,7 @@ def chooseDB(event):
     global db
     sessions.delete(0,END)
     schemes.delete(0,END)
+    annotators.delete(0,END)
     # print(database_choice.get)
     chosen_db = db_changed.get()
     db = client[chosen_db]

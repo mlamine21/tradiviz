@@ -1,7 +1,7 @@
 
 # from tkinter import *                
 from tkinter import *
-from tkinter.ttk import Combobox, Treeview
+from tkinter.ttk import Combobox, Treeview, Progressbar
 from mongoUtils import *
 from functools import partial
 import pandas as pd
@@ -17,6 +17,10 @@ client = None
 db = None
 filtered_matrix = None
 ax= None
+thres_min = 0
+thres_max = 1
+time_min = 0
+time_max = 1
 def connect():
     global client
     client = connectDB(host.get(), int(port.get()), username.get(), password.get())
@@ -77,10 +81,23 @@ def clearTree(tree):
     for item in tree.get_children():
       tree.delete(item)
 
-def generateMatrix():
+def filterMatrixTime(matrix, time_min, time_max):
+    matrix_temp = matrix.astype({0:"float",1:"float"})
+    total_time = matrix_temp[1].iloc[-1] - matrix_temp[0].iloc[0]
+    time_min = matrix_temp[0].iloc[0] + (time_min*total_time)
+    time_max = matrix_temp[0].iloc[0] + (time_max*total_time)
+    matrix_temp = matrix_temp.loc[matrix_temp[0]>=time_min]
+    matrix_temp = matrix_temp.loc[matrix_temp[1]<=time_max]
+    
+    # print( and matrix_temp[1]<=time_max)
+    # matrix_temp = matrix_temp.loc[matrix_temp[0]>=time_min and matrix_temp[1]<=time_max] 
+    return matrix_temp
+
+def generateMatrix(time_min=0,time_max=1):
     global db
     global filtered_matrix
     global ax
+    global root
     chosen_db = db_changed.get()
     db = client[chosen_db]
     annotators_collection = db["Annotators"]
@@ -99,8 +116,27 @@ def generateMatrix():
     annotations = db["Annotations"]
     annotations_data = db["AnnotationData"]
     all_sessions_matrix = np.zeros((len(labels.get_children()),len(labels.get_children())))
+    popup = Toplevel()
+    popup.geometry("+%d+%d" %(root.winfo_x()+root.winfo_width()/2,root.winfo_y()+root.winfo_height()/2,))
+    popup.overrideredirect(1)
+    progress_var = DoubleVar()
+    progress = 0
+    pb = Progressbar(
+        popup,
+        orient='horizontal',
+        mode='determinate',
+        length=280,
+        variable=progress_var, 
+        maximum=100
+    )
+    pb.pack()
+    popup.pack_slaves()
+    progress_step = float(100.0/len(getListBoxSelection(sessions)))
     for session in getListBoxSelection(sessions):
         all_roles = []
+        popup.update()
+        progress += progress_step
+        progress_var.set(progress)
         for scheme in getListBoxSelection(schemes):
             #Get the annotation files
             annotation = annotations.find({
@@ -118,7 +154,8 @@ def generateMatrix():
             final_matrix = combineRolesMatrices(all_roles[0], all_roles[1], ((schemes_temp.find())[0])['labels'] )
         else:
             final_matrix = all_roles[0]  
-        
+        if(time_min>0 or time_max<1):
+            final_matrix = filterMatrixTime(final_matrix,time_min, time_max)
         transition = getTransitions(final_matrix, normalize=False)
         # print(transition)
         
@@ -151,7 +188,7 @@ def generateMatrix():
     #     writer = csv.writer(f, delimiter=',')
     #     for i in range(len(filtered_matrix)):
     #         writer.writerow(filtered_matrix.iloc[i])
-
+    popup.destroy()
 
     drawTransitionDiagram(filtered_matrix, threshold_min=0.8, threshold_max=1)
     return
@@ -276,7 +313,13 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
     #Map color to differentiate client from counselor
     color_map = []
     schemes_temp = db["Schemes"]
-    nb_labels_role1 = len(((schemes_temp.find())[0])["labels"])
+    #if two roles, check [0]
+    #if one role, check max
+    if(len(getListBoxSelection(schemes))==2):
+        nb_labels_role1 = len(((schemes_temp.find())[0])["labels"])
+    else:
+        
+        nb_labels_role1 = max(len((schemes_temp.find()[0])["labels"]), len((schemes_temp.find()[1])["labels"])) 
     for node in G:
         if node < nb_labels_role1:
             color_map.append('#f2bdb6')
@@ -296,10 +339,15 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
 
 
 def updateDiagram(val):
-    global filtered_matrix
+    global filtered_matrix, thres_min, thres_max, time_min, time_max
+    thres_min = val[0]
+    thres_max= val[1]
     # global ax
     # ax.cla()
     drawTransitionDiagram(filtered_matrix, val[0], val[1])
+
+def updateTimeRange(val):
+    generateMatrix(val[0], val[1]) 
 
 root = Tk()
 root.title("TraDiViz")
@@ -428,6 +476,7 @@ transition_frame.pack(side='left')
 fig, ax= plt.subplots()
 ax.axis(False)
 axthres = fig.add_axes([0.25, 0, 0.6, 0.05])
+axtime = fig.add_axes([0.25, 0.9, 0.6, 0.05])
 # fig.set_size_inches(fig.get_size_inches()[0]*1.2, fig.get_size_inches()[1]*1.2)
 thres_slider = RangeSlider(
     ax=axthres,
@@ -439,8 +488,19 @@ thres_slider = RangeSlider(
     dragging=True
 )
 thres_slider.on_changed(updateDiagram)
-canvas = FigureCanvasTkAgg(fig, right_frame)
 
+time_slider = RangeSlider(
+    ax=axtime,
+    label='Time range',
+    valmin=0,
+    valmax=1,
+    valinit=[0, 1],
+    valstep=0.25,
+    dragging=True,
+
+)
+canvas = FigureCanvasTkAgg(fig, right_frame)
+time_slider.on_changed(updateTimeRange)
 # toolbar = NavigationToolbar2Tk(canvas, right_frame)
 # toolbar.update()
 canvas._tkcanvas.pack(fill=BOTH, expand=True)

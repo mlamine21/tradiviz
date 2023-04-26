@@ -151,7 +151,7 @@ def generateMatrix(time_min=0,time_max=1):
                 label_matrix.loc[labels_data.index(label)] = [label["from"], label["to"], label["id"]]
             all_roles.append(label_matrix)
         if(len(all_roles)==2):
-            final_matrix = combineRolesMatrices(all_roles[0], all_roles[1], ((schemes_temp.find())[0])['labels'] )
+            final_matrix = combineRolesMatrices(all_roles[0], all_roles[1], ((schemes_temp.find())[getListBoxSelection(schemes)[0]])['labels'] )
         else:
             final_matrix = all_roles[0]  
         if(time_min>0 or time_max<1):
@@ -161,7 +161,7 @@ def generateMatrix(time_min=0,time_max=1):
         
         # print(len(selection), len(filtered_matrix))
         all_sessions_matrix+=transition.values
-    
+    size_nodes, size_edges = getSizeNodesAndEdges(all_sessions_matrix) 
     all_sessions_normalized = normalizeTransitions(all_sessions_matrix)
     # all_sessions_normalized = all_sessions_matrix
     normalized_transitions_df = pd.DataFrame(data = all_sessions_normalized)
@@ -190,8 +190,19 @@ def generateMatrix(time_min=0,time_max=1):
     #         writer.writerow(filtered_matrix.iloc[i])
     popup.destroy()
 
-    drawTransitionDiagram(filtered_matrix, threshold_min=0.8, threshold_max=1)
+    drawTransitionDiagram(filtered_matrix, threshold_min=0.8, threshold_max=1, size_nodes=size_nodes, size_edges=size_edges)
     return
+
+def getSizeNodesAndEdges(transitions):
+    size_nodes = []
+    print(transitions)
+    print(transitions[0])
+    for t in transitions:
+        size_nodes.append(sum(t)) 
+    size_edges = []
+    print(size_nodes)
+    return size_nodes, size_edges 
+
 
 def combineRolesMatrices(data_role1, data_role2, labels_role1):
     #Change counselor labels {0:18} -> {14: 32} 
@@ -278,7 +289,7 @@ def _get_markov_edges(Q, role=''):
                 edges[(idx, col)] = round(Q.loc[idx,col],2)
     return edges
 
-def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
+def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_nodes=2500, size_edges=10):
     global ax, db
     # pprint(edges_wts)
     ax.cla()
@@ -302,7 +313,7 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
     # If we do not apply this modification, self-transitions values will not be visible
     for x in G.edges:
         if(x[0] == x[1]):
-            if(x[0]>0 and x[0]<(len(G.edges)/2)):
+            if(x[0]>0 and x[0]<(round(len(G.edges)/2))):
                 edge_labels[(x[0],x[1])]= str(G.get_edge_data(*x)['label'])+"\n"*7
             else:
                 edge_labels[(x[0], x[1])] = 5*"\n"+str(G.get_edge_data(*x)['label'])
@@ -315,11 +326,10 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
     schemes_temp = db["Schemes"]
     #if two roles, check [0]
     #if one role, check max
-    if(len(getListBoxSelection(schemes))==2):
-        nb_labels_role1 = len(((schemes_temp.find())[0])["labels"])
-    else:
-        
-        nb_labels_role1 = max(len((schemes_temp.find()[0])["labels"]), len((schemes_temp.find()[1])["labels"])) 
+    # if(len(getListBoxSelection(schemes))==2):
+    nb_labels_role1 = len(((schemes_temp.find())[getListBoxSelection(schemes)[0]])["labels"])
+    # else:
+    #     nb_labels_role1 = max(len((schemes_temp.find()[getListBoxSelection(schemes)[0]])["labels"]), len((schemes_temp.find()[getListBoxSelection(schemes)[1]])["labels"])) 
     for node in G:
         if node < nb_labels_role1:
             color_map.append('#f2bdb6')
@@ -330,8 +340,8 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1):
         mapping[i] = labels.get_children()[i]
     G = nx.relabel_nodes(G, mapping)
 
-    nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.2, font_size=15, alpha=1, ax=ax)
-    nx.draw_circular(G, with_labels= True, font_size=13, arrowsize=10, node_size=2500,node_color=color_map, ax=ax, alpha=0.9)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.2, font_size=15, alpha=0.9, ax=ax)
+    nx.draw_circular(G, with_labels= True, font_size=13, arrows=True,arrowsize=10, node_size=size_nodes,node_color=color_map, ax=ax, alpha=0.9)
     # plt.show()
     # ax.update()
     canvas.draw()

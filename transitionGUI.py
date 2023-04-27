@@ -21,12 +21,12 @@ thres_min = 0
 thres_max = 1
 time_min = 0
 time_max = 1
+size_nodes = 2500
 def connect():
     global client
     client = connectDB(host.get(), int(port.get()), username.get(), password.get())
     try :
         client.server_info()
-        # print(client)
         status.config(text="Connected")
         all_db = client.list_database_names()  
         for db in all_db:
@@ -42,7 +42,6 @@ def chooseDB(event):
     sessions.delete(0,END)
     schemes.delete(0,END)
     annotators.delete(0,END)
-    # print(database_choice.get)
     chosen_db = db_changed.get()
     db = client[chosen_db]
     sessions_temp = db["Sessions"]
@@ -88,9 +87,6 @@ def filterMatrixTime(matrix, time_min, time_max):
     time_max = matrix_temp[0].iloc[0] + (time_max*total_time)
     matrix_temp = matrix_temp.loc[matrix_temp[0]>=time_min]
     matrix_temp = matrix_temp.loc[matrix_temp[1]<=time_max]
-    
-    # print( and matrix_temp[1]<=time_max)
-    # matrix_temp = matrix_temp.loc[matrix_temp[0]>=time_min and matrix_temp[1]<=time_max] 
     return matrix_temp
 
 def generateMatrix(time_min=0,time_max=1):
@@ -98,6 +94,7 @@ def generateMatrix(time_min=0,time_max=1):
     global filtered_matrix
     global ax
     global root
+    global size_nodes
     chosen_db = db_changed.get()
     db = client[chosen_db]
     annotators_collection = db["Annotators"]
@@ -157,9 +154,7 @@ def generateMatrix(time_min=0,time_max=1):
         if(time_min>0 or time_max<1):
             final_matrix = filterMatrixTime(final_matrix,time_min, time_max)
         transition = getTransitions(final_matrix, normalize=False)
-        # print(transition)
-        
-        # print(len(selection), len(filtered_matrix))
+       
         all_sessions_matrix+=transition.values
     size_nodes, size_edges = getSizeNodesAndEdges(all_sessions_matrix) 
     all_sessions_normalized = normalizeTransitions(all_sessions_matrix)
@@ -195,12 +190,13 @@ def generateMatrix(time_min=0,time_max=1):
 
 def getSizeNodesAndEdges(transitions):
     size_nodes = []
-    print(transitions)
-    print(transitions[0])
+    
     for t in transitions:
         size_nodes.append(sum(t)) 
     size_edges = []
-    print(size_nodes)
+    print("Nombre total de transitions", sum(size_nodes))
+    size_nodes = [2500*(float(i)/max(size_nodes)) for i in size_nodes]
+    
     return size_nodes, size_edges 
 
 
@@ -226,11 +222,16 @@ def getListBoxSelection(listbox):
     return selected_items
 
 def filterTransitionMatrix(matrix, all_labels, selection):
+    global size_nodes
     new_matrix = matrix.copy()
+    new_size_nodes = size_nodes.copy()
     for i in range(len(all_labels)):
         if(all_labels[i] not in selection):
             new_matrix.drop(i, inplace=True, axis=0)
             new_matrix.drop(i, inplace=True, axis=1)
+            #TODO
+            new_size_nodes.remove(size_nodes[i])
+    size_nodes = [2500*(float(i)/max(new_size_nodes)) for i in new_size_nodes]
     return new_matrix
 
 def getTransitions(matrix,normalize = False, display=False):
@@ -303,7 +304,7 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_
         tmp_origin, tmp_destination = k[0], k[1]
         if(v>threshold_min and v<=threshold_max):
             G.add_edge(tmp_origin, tmp_destination, weight = v, label = v)
-
+            
     # Position the nodes in circular layout
     pos = nx.circular_layout(G)
     edge_labels = {(x[0],int(x[1])): G.get_edge_data(*x)['label']  for x in G.edges}
@@ -349,12 +350,12 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_
 
 
 def updateDiagram(val):
-    global filtered_matrix, thres_min, thres_max, time_min, time_max
+    global filtered_matrix, thres_min, thres_max, time_min, time_max, size_nodes
     thres_min = val[0]
     thres_max= val[1]
     # global ax
     # ax.cla()
-    drawTransitionDiagram(filtered_matrix, val[0], val[1])
+    drawTransitionDiagram(filtered_matrix, val[0], val[1], size_nodes)
 
 def updateTimeRange(val):
     generateMatrix(val[0], val[1]) 

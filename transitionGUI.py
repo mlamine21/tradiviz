@@ -88,7 +88,7 @@ def filterMatrixTime(matrix, time_min, time_max):
     time_min = matrix_temp[0].iloc[0] + (time_min*total_time)
     time_max = matrix_temp[0].iloc[0] + (time_max*total_time)
     matrix_temp = matrix_temp.loc[matrix_temp[0]>=time_min]
-    matrix_temp = matrix_temp.loc[matrix_temp[1]<=time_max]
+    matrix_temp = matrix_temp.loc[matrix_temp[1]<time_max]
     return matrix_temp
 
 def generateMatrix(time_min=0,time_max=1):

@@ -22,6 +22,8 @@ thres_max = 1
 time_min = 0
 time_max = 1
 size_nodes = 2500
+nodes_count=[]
+node_colors = ['#f2bdb6', '#bee9eb']
 def connect():
     global client
     client = connectDB(host.get(), int(port.get()), username.get(), password.get())
@@ -95,6 +97,7 @@ def generateMatrix(time_min=0,time_max=1):
     global ax
     global root
     global size_nodes
+    global nodes_count
     chosen_db = db_changed.get()
     db = client[chosen_db]
     annotators_collection = db["Annotators"]
@@ -156,7 +159,7 @@ def generateMatrix(time_min=0,time_max=1):
         transition = getTransitions(final_matrix, normalize=False)
        
         all_sessions_matrix+=transition.values
-    size_nodes, size_edges = getSizeNodesAndEdges(all_sessions_matrix) 
+    size_nodes, size_edges, nodes_count = getSizeNodesAndEdges(all_sessions_matrix) 
     all_sessions_normalized = normalizeTransitions(all_sessions_matrix)
     # all_sessions_normalized = all_sessions_matrix
     normalized_transitions_df = pd.DataFrame(data = all_sessions_normalized)
@@ -184,20 +187,20 @@ def generateMatrix(time_min=0,time_max=1):
     #     for i in range(len(filtered_matrix)):
     #         writer.writerow(filtered_matrix.iloc[i])
     popup.destroy()
-
-    drawTransitionDiagram(filtered_matrix, threshold_min=0.8, threshold_max=1, size_nodes=size_nodes, size_edges=size_edges)
+    drawTransitionDiagram(filtered_matrix, threshold_min=0.8, threshold_max=1, size_nodes=size_nodes, size_edges=size_edges, nodes_count=nodes_count)
     return
 
 def getSizeNodesAndEdges(transitions):
+    global nodes_count, size_nodes
     size_nodes = []
-    
+    nodes_count = []
     for t in transitions:
-        size_nodes.append(sum(t)) 
+        nodes_count.append(sum(t)) 
     size_edges = []
     print("Nombre total de transitions", sum(size_nodes))
-    size_nodes = [2500*(float(i)/max(size_nodes)) for i in size_nodes]
+    size_nodes = [2500*(float(i)/max(nodes_count)) for i in nodes_count]
     
-    return size_nodes, size_edges 
+    return size_nodes, size_edges, nodes_count
 
 
 def combineRolesMatrices(data_role1, data_role2, labels_role1):
@@ -290,8 +293,8 @@ def _get_markov_edges(Q, role=''):
                 edges[(idx, col)] = round(Q.loc[idx,col],2)
     return edges
 
-def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_nodes=2500, size_edges=10):
-    global ax, db
+def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_nodes=2500, size_edges=10, nodes_count=[]):
+    global ax, db, node_colors
     # pprint(edges_wts)
     ax.cla()
     G = nx.MultiDiGraph(ax=ax)
@@ -322,8 +325,7 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_
         else:
             edge_labels[(x[0],x[1])]= G.get_edge_data(*x)['label']
 
-    #Map color to differentiate client from counselor
-    color_map = []
+    
     schemes_temp = db["Schemes"]
     #if two roles, check [0]
     #if one role, check max
@@ -331,6 +333,9 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_
     nb_labels_role1 = len(((schemes_temp.find())[getListBoxSelection(schemes)[0]])["labels"])
     # else:
     #     nb_labels_role1 = max(len((schemes_temp.find()[getListBoxSelection(schemes)[0]])["labels"]), len((schemes_temp.find()[getListBoxSelection(schemes)[1]])["labels"])) 
+    
+    #Map color to differentiate client from counselor
+    color_map = []
     for node in G:
         if node < nb_labels_role1:
             color_map.append('#f2bdb6')
@@ -338,24 +343,29 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_
             color_map.append('#bee9eb')    
 
     for i in range(len(labels.get_children())):
-        mapping[i] = labels.get_children()[i]
+        mapping[i] = labels.get_children()[i]+"\n"+str(int(nodes_count[i]))
     G = nx.relabel_nodes(G, mapping)
 
     nx.draw_networkx_edge_labels(G, pos, edge_labels, label_pos=0.2, font_size=15, alpha=0.9, ax=ax)
     nx.draw_circular(G, with_labels= True, font_size=13, arrows=True,arrowsize=10, node_size=size_nodes,node_color=color_map, ax=ax, alpha=0.9)
     # plt.show()
     # ax.update()
+    handles = []
+    print( ( (schemes_temp.find())[getListBoxSelection(schemes)[0]])['name'])
+    for i in range(len(getListBoxSelection(schemes))):
+        handles.append(mpatches.Patch(color=node_colors[i], label=( (schemes_temp.find())[getListBoxSelection(schemes)[i]])['name']))
+    ax.legend(handles=handles)
     canvas.draw()
 
 
 
 def updateDiagram(val):
-    global filtered_matrix, thres_min, thres_max, time_min, time_max, size_nodes
+    global filtered_matrix, thres_min, thres_max, time_min, time_max, size_nodes, nodes_count
     thres_min = val[0]
     thres_max= val[1]
     # global ax
     # ax.cla()
-    drawTransitionDiagram(filtered_matrix, val[0], val[1], size_nodes)
+    drawTransitionDiagram(filtered_matrix, val[0], val[1], size_nodes, nodes_count=nodes_count)
 
 def updateTimeRange(val):
     generateMatrix(val[0], val[1]) 

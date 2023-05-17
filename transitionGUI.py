@@ -82,13 +82,14 @@ def clearTree(tree):
     for item in tree.get_children():
       tree.delete(item)
 
+#TO DO !!!!
 def filterMatrixTime(matrix, time_min, time_max):
     matrix_temp = matrix.astype({0:"float",1:"float"})
     total_time = matrix_temp[1].iloc[-1] - matrix_temp[0].iloc[0]
     time_min = matrix_temp[0].iloc[0] + (time_min*total_time)
     time_max = matrix_temp[0].iloc[0] + (time_max*total_time)
-    matrix_temp = matrix_temp.loc[matrix_temp[0]>=time_min]
-    matrix_temp = matrix_temp.loc[matrix_temp[1]<time_max]
+    matrix_temp = matrix_temp.loc[matrix_temp[1]>=time_min]
+    matrix_temp = matrix_temp.loc[matrix_temp[0]<=time_max]
     return matrix_temp
 
 def generateMatrix(time_min=0,time_max=1):
@@ -197,7 +198,7 @@ def getSizeNodesAndEdges(transitions):
     for t in transitions:
         nodes_count.append(sum(t)) 
     size_edges = []
-    print("Nombre total de transitions", sum(size_nodes))
+    print("Nombre total de transitions", sum(nodes_count))
     size_nodes = [2500*(float(i)/max(nodes_count)) for i in nodes_count]
     
     return size_nodes, size_edges, nodes_count

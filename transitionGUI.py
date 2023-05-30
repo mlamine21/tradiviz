@@ -23,7 +23,8 @@ time_min = 0
 time_max = 1
 size_nodes = 2500
 nodes_count=[]
-node_colors = ['#f2bdb6', '#bee9eb']
+# node_colors = ['#f2bdb6', '#bee9eb']
+node_colors = ['#bee9eb', '#f2bdb6']
 def connect():
     global client
     client = connectDB(host.get(), int(port.get()), username.get(), password.get())
@@ -69,7 +70,8 @@ def updateLabels(event):
     selection_names = [schemes.get(i) for i in selection_id]
     schemes_temp = db["Schemes"]
     idx=0
-    for s in schemes_temp.find():
+    # schemes_temp.sort("name", pymongo.ASCENDING)
+    for s in schemes_temp.find().sort("name", pymongo.ASCENDING):
         if(s["name"] in selection_names):
             if("labels" in s.keys()):
                 for l in s["labels"]:
@@ -82,23 +84,48 @@ def clearTree(tree):
     for item in tree.get_children():
       tree.delete(item)
 
-#TO DO !!!!
 def filterMatrixTime(matrix, time_min, time_max):
     matrix_temp = matrix.astype({0:"float",1:"float"})
     total_time = matrix_temp[1].iloc[-1] - matrix_temp[0].iloc[0]
     time_min = matrix_temp[0].iloc[0] + (time_min*total_time)
     time_max = matrix_temp[0].iloc[0] + (time_max*total_time)
-    matrix_temp = matrix_temp.loc[matrix_temp[1]>=time_min]
+
+    matrix_temp.reset_index()
+    matrix_test = matrix_temp.loc[matrix_temp[0]<=time_min]
+    print(len(matrix_test))
+    matrix_temp.reset_index()
+    last = matrix_test.iloc[-1]
+    matrix_test = matrix_temp.loc[matrix_temp[1]>time_min]
+    first = matrix_test.iloc[0]
+    print(len(matrix_test))
+    print(len(matrix_temp))
+
+    matrix_temp = matrix_temp.loc[matrix_temp[1]>time_min]
+    # print(matrix_temp)
+    #VERIFIER PAIR +1 
+    #IMPAIR -1
+
     matrix_temp = matrix_temp.loc[matrix_temp[0]<=time_max]
+    if(first.values[0] == last.values[0]):
+         print("####################")
+         print(first.values,last.values)
+    else:
+        print("**********************")
+        print(first.values,last.values)
+         
+    # if(first == last):
+    #     matrix_temp.remove
+   
     return matrix_temp
 
-def generateMatrix(time_min=0,time_max=1):
+def generateMatrix():
     global db
     global filtered_matrix
     global ax
     global root
     global size_nodes
     global nodes_count
+    global time_min, time_max
     chosen_db = db_changed.get()
     db = client[chosen_db]
     annotators_collection = db["Annotators"]
@@ -340,8 +367,12 @@ def drawTransitionDiagram(transitions, threshold_min=0.9, threshold_max=1, size_
     for node in G:
         if node < nb_labels_role1:
             color_map.append('#f2bdb6')
+            # color_map.append('#bee9eb')    
+
         else: 
             color_map.append('#bee9eb')    
+            # color_map.append('#f2bdb6')
+
 
     for i in range(len(labels.get_children())):
         mapping[i] = labels.get_children()[i]+"\n"+str(int(nodes_count[i]))
@@ -369,7 +400,12 @@ def updateDiagram(val):
     drawTransitionDiagram(filtered_matrix, val[0], val[1], size_nodes, nodes_count=nodes_count)
 
 def updateTimeRange(val):
-    generateMatrix(val[0], val[1]) 
+    global time_min, time_max
+    time_min=val[0]
+    time_max=val[1]
+    # a = input("ok? y/n")
+    # if(a=='y'):
+    #     generateMatrix(val[0], val[1]) 
 
 root = Tk()
 root.title("TraDiViz")
@@ -517,7 +553,7 @@ time_slider = RangeSlider(
     valmin=0,
     valmax=1,
     valinit=[0, 1],
-    valstep=0.25,
+    valstep=0.01,
     dragging=True,
 
 )
